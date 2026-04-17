@@ -1,0 +1,14 @@
+services:
+  dev_env:
+    build: .
+    image: py-cffi-dev:latest
+    container_name: py_minimal_dev
+    volumes:
+      - .:/app
+    # Queste due righe sono fondamentali per usare Vim
+    stdin_open: true
+    tty: true
+    deploy:
+      resources:
+        limits:
+          memory: 1G  # Limite di sicurezza per la tua RAM

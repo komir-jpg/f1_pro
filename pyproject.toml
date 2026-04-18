@@ -1,0 +1,10 @@
+[build-system]
+requires = ["scikit-build-core", "cffi"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "my_package"
+version = "0.0.1"
+description = "C bind in Py with scikit and CFFI"
+
+dependencies = ["cffi"]

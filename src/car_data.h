@@ -3,6 +3,9 @@
 
 #include<stdint.h>
 
+#define RB_SIZE 35000
+#define ELEM_SIZE 100
+
 typedef struct {
     uint16_t rmp;
     uint16_t speed;
@@ -12,4 +15,13 @@ typedef struct {
     uint8_t throttle;
 }Car_Data;
 
+typedef struct{
+    LapData data[RB_SIZE];
+    int8_t head;
+    int8_t size;
+} RingBuffer;
+
+void init_buffer(RingBuffer *buffer);
+void push(RingBuffer *buffer, Data data);
+void snapshot(int8_t driver, int8_t get_size,CarData* dest);
 #endif

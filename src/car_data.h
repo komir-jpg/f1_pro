@@ -16,12 +16,12 @@ typedef struct {
 }Car_Data;
 
 typedef struct{
-    LapData data[RB_SIZE];
+    Car_Data data[RB_SIZE];
     int8_t head;
     int8_t size;
 } RingBuffer;
 
 void init_buffer(RingBuffer *buffer);
-void push(RingBuffer *buffer, Data data);
-void snapshot(int8_t driver, int8_t get_size,CarData* dest);
+void push(RingBuffer *buffer, Car_Data data);
+void snapshot(int8_t driver, int8_t get_size,Car_Data* dest);
 #endif

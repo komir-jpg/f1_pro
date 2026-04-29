@@ -3,7 +3,7 @@
 
 #include<stdint.h>
 
-#define RB_SIZE 35000
+#define DATA_SIZE 35000
 #define ELEM_SIZE 100
 
 typedef struct {
@@ -16,12 +16,12 @@ typedef struct {
 }Car_Data;
 
 typedef struct{
-    LapData data[RB_SIZE];
+    Car_Data[DATA_SIZE];
     int8_t head;
     int8_t size;
 } RingBuffer;
 
 void init_buffer(RingBuffer *buffer);
-void push(RingBuffer *buffer, Data data);
-void snapshot(int8_t driver, int8_t get_size,CarData* dest);
+void push(int8_t n_dirver, Car_data data);
+void snapshot(int8_t driver, int8_t get_size,Car_Data* dest);
 #endif

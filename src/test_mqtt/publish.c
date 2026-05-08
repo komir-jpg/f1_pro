@@ -1,7 +1,4 @@
-#include<mosquitto.h>
-#include<stdio.h>
+#include <mosquitto.h>
+#include <stdio.h>
 
-int main{
-
-    struct mosquitto *client
-}
+int main() { struct mosquitto *client; }

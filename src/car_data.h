@@ -1,11 +1,11 @@
 #ifndef CAR_DATA_H
 #define CAR_DATA_H
 
-#include <cstdint>
-#include<stdint.h>
+#include <stdint.h>
+#include <pthread.h>
 
 #define DATA_SIZE 35000
-#define ELEM_SIZE 100
+#define DRIVER_NUM 100
 
 typedef struct {
     uint16_t rmp;
@@ -18,11 +18,14 @@ typedef struct {
 
 typedef struct{
     Car_Data data[DATA_SIZE];
-    uint8_t head;
+    uint16_t head;
     uint16_t size;
+    pthread_mutex_t mutex;
 } RingBuffer;
 
-void init_buffer(RingBuffer *buffer);
+
+int init_buffer(RingBuffer *buffer);
 void push(uint8_t n_dirver, Car_Data data);
 uint16_t snapshot(uint8_t driver, uint16_t get_size, Car_Data* dest);
 #endif
+

@@ -1,64 +1,98 @@
 #include "car_data.h"
-<<<<<<< HEAD
-=======
 
-#include <pthread.h>
->>>>>>> 32fa8000f4fb5f9ab416ec3da083d5c0b0d518b2
-#include <stdint.h>
-
-// static init
-RingBuffer db_drivers[DRIVER_NUM];
-
-int init_buffer(RingBuffer *buffer) {
-  for (int i = 0; i < DRIVER_NUM; i++) {
-    db_drivers[i].head = 0;
-    db_drivers[i].size = 0;
-    int rc = pthread_mutex_init(&db_drivers[i].mutex, NULL);
-    if (rc != 0) {
-      return -1;
-    }
-  }
-  return 0;
+void manager_init(TelemetryManager *tmg){
+  //telelemetry manager already contains all the drivers
+  memset(tmg, 0, sizeof(TelemetryManager));
 }
 
-void push(uint8_t n_driver, Car_Data data) {
-  if (n_driver > 99) {
-    return;
-  }
-  // the buffer is indexed using the dirvers number
-  RingBuffer *b = &db_drivers[n_driver];
+/**
+ * what this function does is basically returning a Driver Stream
+ * which is an instance of a driver with all the history of it's 
+ * telemetry data
+ */
+DriverStream* manager_get_stream(uint8_t n_driver, TelemetryManager *tmg){
+  if(n_driver < 1 || n_driver > N_DRIVER) return NULL;
 
-  pthread_mutex_lock(&b->mutex);
-  b->data[b->head] = data;
+  DriverStream *s = &tmg->drivers[n_driver];
 
-  // move the head
-  b->head = (b->head + 1) % DATA_SIZE;
-
-  if (b->size <= DATA_SIZE) {
-    b->size++;
-  }
-  pthread_mutex_unlock(&b->mutex);
+  //TODO this is an atomic load
+  return s->isActive ? s : NULL;
 }
 
-uint16_t snapshot(uint8_t n_driver, uint16_t u_size, Car_Data *dest) {
-  if (n_driver > 99) {
-    return -1;
-  }
-  // we want to pop the last size car data in the struct
-  // since we do not have a tail
-  RingBuffer *b = &db_drivers[n_driver];
-  pthread_mutex_lock(&b->mutex);
-  if (b->size == 0) {
-    return 0;
-  }
+/**
+ * this function takes a n_driver and a telemetry manager and 
+ * creates a new driver stream based on the driver number given
+ * by the user
+ */
+bool manager_add_stream(uint8_t n_driver, TelemetryManager* tmg){
+  if(n_driver < 1 || n_driver > N_DRIVER) return false;
 
-  uint16_t items = b->size < u_size ? b->size : u_size;
-  uint16_t start_index = (b->head - u_size + DATA_SIZE) % DATA_SIZE;
+  DriverStream *s = &tmg->drivers[n_driver];
+  //check if stream is already in the manager
+  if(s->isActive) return true;
 
-  for (uint16_t i = 0; i < items; i++) {
-    uint16_t real_index = (start_index + i) % DATA_SIZE;
-    dest[i] = b->data[real_index];
-  }
-  pthread_mutex_unlock(&b->mutex);
-  return items;
+  //otherwise create a new stream data buffer for that driver 
+  //TODO make isActive atomic and initialize atomic isActive
+  memset(&s->history, 0, sizeof(TelemetryHistory));
+  //TODO this is an atomic store
+  s->isActive = true;
+
+  return true;
+
 }
+
+/**
+ * this function takes a driver and a frame as input, a frame is 
+ * a snapshot of the current data stream that the mqtt broker is
+ * feeding, every snapshot is saved in the circular buffer 
+ * Telemetry History, what this function does is a simple push
+ * to that buffer
+ */
+void history_push(TelemetryHistory *history, const Frame *frame){
+  /** 
+   * * here whe increment the atomic value in a relaxed way sice we 
+   * * are the only writer and we want to read our last position
+   * */
+  uint32_t pos = atomic_load_explicit(&history->head, memory_order_relaxed);
+
+  /** 
+   * push the data, here we use & for the wrap around:
+   * notice & only works for powers of 2, this is how the logic works:
+   * pos = 0   → 0   & 511 = 0    write slot 0,   head → 1 
+   * pos = 1   → 1   & 511 = 1    write slot 1,   head → 2
+   * pos = 511 → 511 & 511 = 511  write slot 511, head → 512
+   * pos = 512 → 512 & 511 = 0    write slot 0,   head → 513  ← wraparound
+   * pos = 513 → 513 & 511 = 1    write slot 1,   head → 514
+   * */
+  history->frames[pos & (HISTORY_LEN - 1)] = *frame;
+
+  //increment the head counter
+  atomic_store_explicit(&history->head, pos + 1, memory_order_release);
+
+}
+
+/**
+ * this function takes as input the history of a driver, the number of frames
+ * to pull from the buffer and returns an array of frames
+ * since we have a continuos head counter we don't need to use any modulo logic
+ */
+uint32_t history_snapshot(TelemetryHistory *history, uint32_t max_frames, Frame f_out[])
+{
+  uint32_t head = atomic_load_explicit(&history->head, memory_order_acquire);
+
+  uint32_t aviable = head < HISTORY_LEN ? head : HISTORY_LEN;
+  //check if the number of frames are lower than max_frames
+  uint32_t count = aviable < max_frames ? aviable : max_frames;
+  //oldest frame we want - unwrapped index
+  uint32_t start = head - count;
+
+  for(uint32_t i = 0; i < count; i++){
+    //apply the same logic as history_push
+    f_out[i] = history->frames[(start+i) & (HISTORY_LEN - 1)];
+  }
+
+  //number of actual frame pulled
+  return count;
+
+}
+

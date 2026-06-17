@@ -1,2 +1,3 @@
 compile:
-	gcc publish.c subscribe.c -lmosquitto
+	gcc publish.c -o publish -lmosquitto
+	gcc subscribe.c  -o subscribe -lmosquitto

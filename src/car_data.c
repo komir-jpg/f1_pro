@@ -15,8 +15,8 @@ DriverStream* manager_get_stream(uint8_t n_driver, TelemetryManager *tmg){
 
   DriverStream *s = &tmg->drivers[n_driver];
 
-  //TODO this is an atomic load
-  return s->isActive ? s : NULL;
+  bool active = atomic_load_explicit(&s->isActive, memory_order_acquire);
+  return active ? s : NULL;
 }
 
 /**
@@ -29,13 +29,12 @@ bool manager_add_stream(uint8_t n_driver, TelemetryManager* tmg){
 
   DriverStream *s = &tmg->drivers[n_driver];
   //check if stream is already in the manager
-  if(s->isActive) return true;
+  if(atomic_load_explicit(&s->isActive, memory_order_acquire)) return true;
 
   //otherwise create a new stream data buffer for that driver 
-  //TODO make isActive atomic and initialize atomic isActive
   memset(&s->history, 0, sizeof(TelemetryHistory));
-  //TODO this is an atomic store
-  s->isActive = true;
+  
+  atomic_store_explicit(&s->isActive, true, memory_order_release);
 
   return true;
 
@@ -80,9 +79,9 @@ uint32_t history_snapshot(TelemetryHistory *history, uint32_t max_frames, Frame 
 {
   uint32_t head = atomic_load_explicit(&history->head, memory_order_acquire);
 
-  uint32_t aviable = head < HISTORY_LEN ? head : HISTORY_LEN;
+  uint32_t available = head < HISTORY_LEN ? head : HISTORY_LEN;
   //check if the number of frames are lower than max_frames
-  uint32_t count = aviable < max_frames ? aviable : max_frames;
+  uint32_t count = available < max_frames ? available : max_frames;
   //oldest frame we want - unwrapped index
   uint32_t start = head - count;
 
@@ -95,4 +94,3 @@ uint32_t history_snapshot(TelemetryHistory *history, uint32_t max_frames, Frame 
   return count;
 
 }
-

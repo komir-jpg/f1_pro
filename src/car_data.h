@@ -28,7 +28,7 @@ typedef struct{
 
 typedef struct{
     TelemetryHistory history;
-    bool isActive;
+    _Atomic bool isActive;
 }DriverStream;
 
 typedef struct{
@@ -39,5 +39,6 @@ void manager_init(TelemetryManager *tmg);
 void history_push(TelemetryHistory *history, const Frame *frame);
 DriverStream* manager_get_stream(uint8_t n_driver, TelemetryManager *tmg);
 bool manager_add_stream(uint8_t n_driver, TelemetryManager *tmg);
-uint32_t history_snapshot(TelemetryHistory *history, uint32_t max_frames, Frame f_out[]);
+uint32_t history_snapshot(TelemetryHistory *history, uint32_t max_frames, 
+    Frame f_out[]);
 #endif
